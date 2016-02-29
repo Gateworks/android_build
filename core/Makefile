@@ -867,17 +867,60 @@ kernelmodules: $(TARGET_PREBUILT_KERNEL) | $(ACP)
 else
 kernelmodules:
 endif
+
+# ----------------------------------------------------------------
+# uboot script:
+BOOTSCRIPT_TARGET := $(PRODUCT_OUT)/boot/boot/6x_bootscript-ventana
+$(BOOTSCRIPT_TARGET): device/gateworks/ventana/6x_bootscript.txt $(TARGET_BOOTLOADER_IMAGE)
+	mkdir -p $(dir $@)
+	mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot script" -d $< $@
+
+# ----------------------------------------------------------------
+# uboot images:
+URAMDISK_TARGET := $(PRODUCT_OUT)/boot/boot/uramdisk.img
+$(URAMDISK_TARGET): $(BUILT_RAMDISK_TARGET)
+	mkdir -p $(dir $@)
+	mkimage -A arm -O linux -T ramdisk -n "RAM Disk" -d $< $@
+
+URAMDISK_RECOVERY_TARGET := $(PRODUCT_OUT)/uramdisk-recovery.img
+$(RAMDISK_RECOVERY_TARGET): $(recovery_ramdisk)
+	mkdir -p $(dir $@)
+	mkimage -A arm -O linux -T ramdisk -n "RAM Disk" -d $< $@
+
 # ----------------------------------------------------------------
 # support ubifs rules:
 .PHONY: ubiimagesgenerate
 ifeq ($(TARGET_USERIMAGES_USE_UBIFS),true)
+BOOT_TARGET_UBIFS := $(PRODUCT_OUT)/boot.ubifs
+$(BOOT_TARGET_UBIFS): $(MKUBIFS) $(INTERNAL_BOOTIMAGE_FILES) $(TARGET_PREBUILT_KERNEL) $(BOOTSCRIPT_TARGET) $(URAMDISK_TARGET)
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS) -d $(PRODUCT_OUT)/boot -o $@
+
+RECOVERY_TARGET_UBIFS := $(PRODUCT_OUT)/recovery.ubifs
+$(RECOVERY_TARGET_UBIFS): $(MKUBIFS) $(INSTALLED_RECOVERYIMAGE_TARGET)
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS) -d $(PRODUCT_OUT)/recovery -o $@
+
+SYSTEM_TARGET_UBIFS := $(PRODUCT_OUT)/system.ubifs
+$(SYSTEM_TARGET_UBIFS): $(MKUBIFS) $(INSTALLED_SYSTEMIMAGE)
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS) -s -d $(PRODUCT_OUT)/system -o $@
+
+USERDATA_TARGET_UBIFS := $(PRODUCT_OUT)/userdata.ubifs
+
+ifneq ($(skip_userdata.img),true)
+$(USERDATA_TARGET_UBIFS): $(MKUBIFS) $(INSTALLED_USERDATAIMAGE_TARGET)
+	$(hide) mkdir -p $(PRODUCT_OUT)/data
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS) -s -d $(PRODUCT_OUT)/data -o $@
+endif
+
 UBI_RAW_IMAGE := $(PRODUCT_OUT)/android.ubi
 
 .PHONY: $(UBI_RAW_IMAGE)
 
 ubiimagesgenerate: $(UBI_RAW_IMAGE)
 
-$(UBI_RAW_IMAGE) : $(INSTALLED_USERDATAIMAGE_TARGET) systemimage
+$(UBI_RAW_IMAGE) : $(BOOT_TARGET_UBIFS) \
+		$(RECOVERY_TARGET_UBIFS) \
+		$(SYSTEM_TARGET_UBIFS) \
+		$(USERDATA_TARGET_UBIFS)
 	$(call pretty,"Generating UBI raw image:" "$(UBI_RAW_IMAGE)" "$(UBI_RAW_RECO_IMAGE)")
 	$(MKUBIRAW) -o $(UBI_RAW_IMAGE) $(TARGET_UBIRAW_ARGS)
 else
