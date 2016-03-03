@@ -883,7 +883,7 @@ $(URAMDISK_TARGET): $(BUILT_RAMDISK_TARGET)
 	mkimage -A arm -O linux -T ramdisk -n "RAM Disk" -d $< $@
 
 URAMDISK_RECOVERY_TARGET := $(PRODUCT_OUT)/uramdisk-recovery.img
-$(RAMDISK_RECOVERY_TARGET): $(recovery_ramdisk)
+$(URAMDISK_RECOVERY_TARGET): $(INSTALLED_RECOVERYIMAGE_TARGET)
 	mkdir -p $(dir $@)
 	mkimage -A arm -O linux -T ramdisk -n "RAM Disk" -d $< $@
 
@@ -1029,7 +1029,10 @@ $(INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE) $(RECOVERY_FROM_BOOT_PATCH) | $(A
 	$(copy-file-to-target)
 	$(hide) $(call assert-max-image-size,$@ $(RECOVERY_FROM_BOOT_PATCH),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE),yaffs)
 
-systemimage: $(INSTALLED_SYSTEMIMAGE)
+systemimage: $(INSTALLED_SYSTEMIMAGE) \
+	$(BOOTSCRIPT_TARGET) \
+	$(URAMDISK_TARGET) \
+	$(URAMDISK_RECOVERY_TARGET)
 
 .PHONY: systemimage-nodeps snod
 systemimage-nodeps snod: $(filter-out systemimage-nodeps snod,$(MAKECMDGOALS)) \
