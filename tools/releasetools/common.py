@@ -845,15 +845,10 @@ class DeviceSpecificParams(object):
     """Called at the start of full OTA installation."""
     return self._DoCall("FullOTA_InstallBegin")
 
-  def FullOTA_InstallEnd_Ext4(self):
+  def FullOTA_InstallEnd(self):
     """Called at the end of full OTA installation; typically this is
     used to install the image for the device's baseband processor."""
-    return self._DoCall("FullOTA_InstallEnd_Ext4")
-
-  def FullOTA_InstallEnd_Ubifs(self):
-    """Called at the end of full OTA installation; typically this is
-    used to install the image for the device's baseband processor."""
-    return self._DoCall("FullOTA_InstallEnd_Ubifs")
+    return self._DoCall("FullOTA_InstallEnd")
 
   def IncrementalOTA_Assertions(self):
     """Called after emitting the block of assertions at the top of an
