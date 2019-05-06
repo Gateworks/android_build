@@ -1036,34 +1036,61 @@ $(INSTALLED_URAMDISK_RECOVERY_TARGET): $(INSTALLED_RECOVERYIMAGE_TARGET)
 	mkimage -A arm -O linux -T ramdisk -n "RAM Disk" -d $(recovery_ramdisk) $@
 	cp $@ $(TARGET_RECOVERY_OUT)/boot/uramdisk.img
 
-# ----------------------------------------------------------------
-# support ubifs rules:
 .PHONY: ubiimagesgenerate
 ifeq ($(TARGET_USERIMAGES_USE_UBIFS),true)
 
-UBI_RAW_IMAGE := $(PRODUCT_OUT)/android.ubi
+UBI_RAW_IMAGE_LARGE := $(PRODUCT_OUT)/android_large.ubi
 
-.PHONY: $(UBI_RAW_IMAGE)
+.PHONY: $(UBI_RAW_IMAGE_LARGE)
 
-ubiimagesgenerate: $(UBI_RAW_IMAGE)
+ubiimagesgenerate: $(UBI_RAW_IMAGE_LARGE)
 
-$(UBI_RAW_IMAGE) : $(INSTALLED_USERDATAIMAGE_TARGET) \
+$(UBI_RAW_IMAGE_LARGE) : $(INSTALLED_USERDATAIMAGE_TARGET) \
+		$(INSTALLED_BOOTLOADER_TARGET) \
+		$(INSTALLED_URAMDISK_TARGET) \
+		$(INSTALLED_URAMDISK_RECOVERY_TARGET) \
+		$(MKUBIFS) \
+		kernelimage \
+		systemimage \
+		ubiimagesgenerate2
+	$(call pretty,"Generating LARGE UBIFS images:")
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS_LARGE) -d $(PRODUCT_OUT)/boot -o $(PRODUCT_OUT)/boot.ubifs
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS_LARGE) -d $(PRODUCT_OUT)/recovery/boot -o $(PRODUCT_OUT)/recovery.ubifs
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS_LARGE) -S -s $(SELINUX_FC) -d $(PRODUCT_OUT)/system -o $(PRODUCT_OUT)/system.ubifs
+	$(hide) mkdir -p $(PRODUCT_OUT)/data
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS_LARGE) -S -s $(SELINUX_FC) -d $(PRODUCT_OUT)/data -o $(PRODUCT_OUT)/userdata.ubifs
+	$(call pretty,"Generating LARGE UBI raw image:" "$(UBI_RAW_IMAGE_LARGE)" "$(UBI_RAW_RECO_IMAGE)")
+	$(MKUBIRAW) -o $(UBI_RAW_IMAGE_LARGE) $(TARGET_UBIRAW_ARGS_LARGE)
+else
+ubiimagesgenerate:
+endif
+
+.PHONY: ubiimagesgenerate2
+ifeq ($(TARGET_USERIMAGES_USE_UBIFS),true)
+
+UBI_RAW_IMAGE_NORMAL := $(PRODUCT_OUT)/android_normal.ubi
+
+.PHONY: $(UBI_RAW_IMAGE_NORMAL)
+
+ubiimagesgenerate2: $(UBI_RAW_IMAGE_NORMAL)
+
+$(UBI_RAW_IMAGE_NORMAL) : $(INSTALLED_USERDATAIMAGE_TARGET) \
 		$(INSTALLED_BOOTLOADER_TARGET) \
 		$(INSTALLED_URAMDISK_TARGET) \
 		$(INSTALLED_URAMDISK_RECOVERY_TARGET) \
 		$(MKUBIFS) \
 		kernelimage \
 		systemimage
-	$(call pretty,"Generating UBIFS images:")
-	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS) -d $(PRODUCT_OUT)/boot -o $(PRODUCT_OUT)/boot.ubifs
-	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS) -d $(PRODUCT_OUT)/recovery/boot -o $(PRODUCT_OUT)/recovery.ubifs
-	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS) -S -s $(SELINUX_FC) -d $(PRODUCT_OUT)/system -o $(PRODUCT_OUT)/system.ubifs
+	$(call pretty,"Generating NORMAL UBIFS images:")
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS_NORMAL) -d $(PRODUCT_OUT)/boot -o $(PRODUCT_OUT)/boot.ubifs
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS_NORMAL) -d $(PRODUCT_OUT)/recovery/boot -o $(PRODUCT_OUT)/recovery.ubifs
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS_NORMAL) -S -s $(SELINUX_FC) -d $(PRODUCT_OUT)/system -o $(PRODUCT_OUT)/system.ubifs
 	$(hide) mkdir -p $(PRODUCT_OUT)/data
-	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS) -S -s $(SELINUX_FC) -d $(PRODUCT_OUT)/data -o $(PRODUCT_OUT)/userdata.ubifs
-	$(call pretty,"Generating UBI raw image:" "$(UBI_RAW_IMAGE)" "$(UBI_RAW_RECO_IMAGE)")
-	$(MKUBIRAW) -o $(UBI_RAW_IMAGE) $(TARGET_UBIRAW_ARGS)
+	$(MKUBIFS) $(TARGET_MKUBIFS_ARGS_NORMAL) -S -s $(SELINUX_FC) -d $(PRODUCT_OUT)/data -o $(PRODUCT_OUT)/userdata.ubifs
+	$(call pretty,"Generating NORMAL UBI raw image:" "$(UBI_RAW_IMAGE_NORMAL)" "$(UBI_RAW_RECO_IMAGE)")
+	$(MKUBIRAW) -o $(UBI_RAW_IMAGE_NORMAL) $(TARGET_UBIRAW_ARGS_NORMAL)
 else
-ubiimagesgenerate:
+ubiimagesgenerate2:
 endif
 
 .PHONY: recoveryimage
